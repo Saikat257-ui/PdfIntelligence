@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}PDF Q&A - Home{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="text-center mb-5">
+            <h1 class="display-4 mb-3">PDF Q&A System</h1>
+            <p class="lead">Upload PDF documents and ask questions about their content using advanced AI technology.</p>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-file-upload fa-4x mb-3 text-primary"></i>
+                        <h3 class="card-title">Upload a PDF</h3>
+                        <p class="card-text">Start by uploading a PDF document that you want to ask questions about.</p>
+                        <a href="{{ url_for('upload') }}" class="btn btn-primary">
+                            <i class="fas fa-upload me-2"></i>Upload PDF
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-question-circle fa-4x mb-3 text-info"></i>
+                        <h3 class="card-title">Ask Questions</h3>
+                        <p class="card-text">Get answers to your questions about the content of your PDF documents.</p>
+                        <a href="{{ url_for('qa') }}" class="btn btn-info">
+                            <i class="fas fa-question me-2"></i>Ask Questions
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h3>How It Works</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-4">
+                        <div class="rounded-circle bg-primary p-3 d-inline-flex justify-content-center align-items-center mb-3" style="width: 80px; height: 80px;">
+                            <i class="fas fa-upload fa-2x text-white"></i>
+                        </div>
+                        <h4>1. Upload</h4>
+                        <p>Upload your PDF document to our system.</p>
+                    </div>
+                    <div class="col-md-4 text-center mb-4">
+                        <div class="rounded-circle bg-primary p-3 d-inline-flex justify-content-center align-items-center mb-3" style="width: 80px; height: 80px;">
+                            <i class="fas fa-cogs fa-2x text-white"></i>
+                        </div>
+                        <h4>2. Process</h4>
+                        <p>Our system analyzes the content of your document.</p>
+                    </div>
+                    <div class="col-md-4 text-center mb-4">
+                        <div class="rounded-circle bg-primary p-3 d-inline-flex justify-content-center align-items-center mb-3" style="width: 80px; height: 80px;">
+                            <i class="fas fa-comment-dots fa-2x text-white"></i>
+                        </div>
+                        <h4>3. Ask</h4>
+                        <p>Ask questions and get intelligent answers based on your document.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

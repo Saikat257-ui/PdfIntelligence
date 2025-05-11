@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+
+{% block title %}Upload PDF{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="mb-0"><i class="fas fa-file-upload me-2"></i>Upload PDF Document</h2>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data" id="upload-form">
+                    <div class="mb-4">
+                        <div class="file-upload-container">
+                            <div class="file-upload-area" id="drop-area">
+                                <input type="file" class="file-input" id="pdf-file" name="file" accept=".pdf" onchange="updateFileName(this)" required>
+                                <div class="file-upload-content text-center p-5">
+                                    <i class="fas fa-file-pdf fa-4x mb-3 text-primary"></i>
+                                    <h4 class="mb-2">Drag & Drop your PDF here</h4>
+                                    <p class="text-muted mb-3">or</p>
+                                    <button type="button" class="btn btn-outline-primary btn-browse">
+                                        Browse Files
+                                    </button>
+                                    <p class="selected-file-name mt-3" id="file-name">No file selected</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i> Maximum file size: 16MB
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary btn-lg" id="upload-button">
+                            <i class="fas fa-upload me-2"></i>Upload PDF
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h3>Previously Uploaded Documents</h3>
+            </div>
+            <div class="card-body">
+                <div class="text-center" id="loading-documents">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p>Loading documents...</p>
+                </div>
+                <div id="documents-list"></div>
+                <div id="no-documents" class="text-center" style="display: none;">
+                    <p class="text-muted">No documents uploaded yet.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Processing Modal -->
+<div class="modal fade" id="processingModal" tabindex="-1" aria-labelledby="processingModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center p-5">
+                <div class="spinner-border text-primary mb-4" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Processing...</span>
+                </div>
+                <h4 class="mb-3">Processing Your PDF</h4>
+                <p class="text-muted">This may take a moment. We're extracting text and preparing your document for Q&A.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const dropArea = document.getElementById('drop-area');
+        const fileInput = document.getElementById('pdf-file');
+        const browseBtn = document.querySelector('.btn-browse');
+        const uploadForm = document.getElementById('upload-form');
+        
+        // Select file when Browse button is clicked
+        browseBtn.addEventListener('click', function() {
+            fileInput.click();
+        });
+        
+        // Drag & drop functionality
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            dropArea.classList.add('highlight');
+        }
+        
+        function unhighlight() {
+            dropArea.classList.remove('highlight');
+        }
+        
+        dropArea.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const file = dt.files[0];
+            fileInput.files = dt.files;
+            updateFileName(fileInput);
+        }
+        
+        // Show processing modal on form submit
+        uploadForm.addEventListener('submit', function() {
+            const fileInput = document.getElementById('pdf-file');
+            if (fileInput.files.length > 0) {
+                const modal = new bootstrap.Modal(document.getElementById('processingModal'));
+                modal.show();
+            }
+        });
+        
+        // Load documents
+        loadDocuments();
+    });
+    
+    // Update file name display
+    function updateFileName(input) {
+        const fileName = input.files[0] ? input.files[0].name : 'No file selected';
+        document.getElementById('file-name').textContent = fileName;
+        
+        if (input.files[0]) {
+            document.getElementById('file-name').classList.add('text-primary');
+        } else {
+            document.getElementById('file-name').classList.remove('text-primary');
+        }
+    }
+    
+    // Load documents
+    function loadDocuments() {
+        const loadingEl = document.getElementById('loading-documents');
+        const listEl = document.getElementById('documents-list');
+        const noDocsEl = document.getElementById('no-documents');
+        
+        fetch('/api/documents')
+            .then(response => response.json())
+            .then(data => {
+                loadingEl.style.display = 'none';
+                
+                if (data.documents && data.documents.length > 0) {
+                    listEl.innerHTML = '<ul class="list-group">' + 
+                        data.documents.map(doc => `
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-file-pdf me-2 text-primary"></i>
+                                    ${doc.filename}
+                                    <small class="text-muted ms-2">${doc.upload_date}</small>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary select-document" data-id="${doc.id}">
+                                    <i class="fas fa-check me-1"></i>Select
+                                </button>
+                            </li>
+                        `).join('') + 
+                        '</ul>';
+                    
+                    // Add event listeners to select buttons
+                    document.querySelectorAll('.select-document').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const docId = this.getAttribute('data-id');
+                            selectDocument(docId);
+                        });
+                    });
+                } else {
+                    noDocsEl.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading documents:', error);
+                loadingEl.style.display = 'none';
+                listEl.innerHTML = '<div class="alert alert-danger">Error loading documents. Please try again.</div>';
+            });
+    }
+    
+    // Select document
+    function selectDocument(documentId) {
+        console.log('Selecting document with ID:', documentId);
+        
+        // Show loading message
+        showNotification('Selecting document...', 'info');
+        
+        // Simplest approach - direct navigation to the QA page with document ID
+        window.location.href = `/qa/${documentId}`;
+        
+        // Prevent further execution
+        return false;
+    }
+</script>
+{% endblock %}

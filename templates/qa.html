@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+
+{% block title %}Ask Questions{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="fas fa-file-pdf me-2"></i>Current Document</h4>
+            </div>
+            <div class="card-body">
+                {% if document %}
+                <div class="document-info">
+                    <div class="mb-3 p-3 bg-dark rounded">
+                        <h5 class="text-truncate" title="{{ document.filename }}">
+                            <i class="fas fa-file-pdf me-2 text-primary"></i>
+                            {{ document.filename }}
+                        </h5>
+                        <small class="text-muted">
+                            <i class="fas fa-calendar-alt me-1"></i>
+                            Uploaded: {{ document.upload_date.strftime('%Y-%m-%d %H:%M') }}
+                        </small>
+                    </div>
+                    <a href="{{ url_for('upload') }}" class="btn btn-outline-primary btn-sm w-100">
+                        <i class="fas fa-exchange-alt me-1"></i>
+                        Switch Document
+                    </a>
+                </div>
+                {% else %}
+                <div class="text-center p-4">
+                    <p class="text-muted">No document selected</p>
+                    <a href="{{ url_for('upload') }}" class="btn btn-primary">
+                        <i class="fas fa-upload me-1"></i>
+                        Upload a Document
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Sample Questions</h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">Try asking questions like:</p>
+                <div class="sample-questions">
+                    <button class="btn btn-outline-info mb-2 w-100 text-start sample-question">
+                        What is the main topic of this document?
+                    </button>
+                    <button class="btn btn-outline-info mb-2 w-100 text-start sample-question">
+                        Can you summarize this document?
+                    </button>
+                    <button class="btn btn-outline-info mb-2 w-100 text-start sample-question">
+                        What are the key findings in this paper?
+                    </button>
+                    <button class="btn btn-outline-info mb-0 w-100 text-start sample-question">
+                        What are the conclusions of this document?
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="mb-0"><i class="fas fa-question-circle me-2"></i>Ask a Question</h3>
+            </div>
+            <div class="card-body">
+                <form id="question-form">
+                    <div class="mb-3">
+                        <label for="question" class="form-label">Your Question</label>
+                        <textarea class="form-control" id="question" rows="3" placeholder="Enter your question about the document..." required></textarea>
+                    </div>
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary" id="ask-button">
+                            <i class="fas fa-paper-plane me-2"></i>Ask Question
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div id="chat-container">
+            <!-- Chat messages will be added here dynamically -->
+            <div class="text-center p-5" id="no-messages">
+                <i class="fas fa-comments fa-3x mb-3 text-muted"></i>
+                <p class="text-muted">Ask a question to start the conversation</p>
+            </div>
+        </div>
+        
+        <!-- Loading indicator -->
+        <div id="loading-indicator" style="display: none;">
+            <div class="typing-indicator">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const questionForm = document.getElementById('question-form');
+        const questionInput = document.getElementById('question');
+        const askButton = document.getElementById('ask-button');
+        const chatContainer = document.getElementById('chat-container');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const noMessages = document.getElementById('no-messages');
+        const sampleQuestions = document.querySelectorAll('.sample-question');
+        
+        // Get document ID from URL, e.g., /qa/1
+        let documentId = {{ document.id }};
+        console.log('Document ID from page:', documentId);
+        
+        // Add event listener to the form submission
+        questionForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const question = questionInput.value.trim();
+            
+            if (question) {
+                askQuestion(question);
+                questionInput.value = '';
+            }
+        });
+        
+        // Add event listeners to sample questions
+        sampleQuestions.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const questionText = this.textContent.trim();
+                questionInput.value = questionText;
+                askQuestion(questionText);
+            });
+        });
+        
+        // Function to ask a question
+        function askQuestion(question) {
+            // Hide no messages placeholder
+            noMessages.style.display = 'none';
+            
+            // Add user question to chat
+            addMessageToChat('user', question);
+            
+            // Show loading indicator
+            loadingIndicator.style.display = 'block';
+            
+            // Disable ask button while processing
+            askButton.disabled = true;
+            askButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...';
+            
+            // Send question to server
+            fetch(`/api/ask/${documentId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    question: question,
+                    document_id: documentId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading indicator
+                loadingIndicator.style.display = 'none';
+                
+                // Enable ask button
+                askButton.disabled = false;
+                askButton.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Ask Question';
+                
+                // Add response to chat
+                if (data.error) {
+                    addMessageToChat('error', data.error);
+                } else {
+                    addMessageToChat('assistant', data.answer);
+                }
+                
+                // Scroll to bottom of chat
+                window.scrollTo(0, document.body.scrollHeight);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                
+                // Hide loading indicator
+                loadingIndicator.style.display = 'none';
+                
+                // Enable ask button
+                askButton.disabled = false;
+                askButton.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Ask Question';
+                
+                // Add error message to chat
+                addMessageToChat('error', 'An error occurred while processing your question. Please try again.');
+            });
+        }
+        
+        // Function to add a message to the chat
+        function addMessageToChat(sender, message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + (sender === 'user' ? 'user-message' : sender === 'assistant' ? 'assistant-message' : 'error-message');
+            
+            let icon = '';
+            if (sender === 'user') {
+                icon = '<i class="fas fa-user"></i>';
+            } else if (sender === 'assistant') {
+                icon = '<i class="fas fa-robot"></i>';
+            } else {
+                icon = '<i class="fas fa-exclamation-triangle"></i>';
+            }
+            
+            messageDiv.innerHTML = `
+                <div class="message-header">
+                    <div class="message-avatar">
+                        ${icon}
+                    </div>
+                    <div class="message-sender">
+                        ${sender === 'user' ? 'You' : sender === 'assistant' ? 'AI Assistant' : 'Error'}
+                    </div>
+                </div>
+                <div class="message-content">
+                    ${formatMessage(message)}
+                </div>
+            `;
+            
+            chatContainer.appendChild(messageDiv);
+        }
+        
+        // Function to format message with markdown-like syntax
+        function formatMessage(message) {
+            // Convert line breaks to <br>
+            return message.replace(/\n/g, '<br>');
+        }
+    });
+</script>
+{% endblock %}
