@@ -7,7 +7,7 @@ from werkzeug.utils import secure_filename
 import uuid
 from models import db, Document
 from utils.pdf_processor import extract_text_from_pdf
-from utils.llama_index_helper import process_document, query_document
+from utils.gemini_direct import process_document, query_document
 
 # Load environment variables from .env file
 load_dotenv()
